@@ -1,40 +1,30 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-const Usuario = require('./usuario');
+// src/models/transferencia.js
 
-const Transferencia = sequelize.define('Transferencia', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-    },
-    emisor: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: Usuario,
-            key: 'id',
-        },
-    },
-    receptor: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: Usuario,
-            key: 'id',
-        },
-    },
-    monto: {
-        type: DataTypes.FLOAT,
-        allowNull: false,
-    },
-    fecha: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW,
-    },
-}, {
-    tableName: 'transferencias',
-    timestamps: false,
-});
+const pool = require('../config/db');
 
-module.exports = Transferencia;
+async function addTransferencia(emisorId, receptorId, monto) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query('UPDATE usuarios SET balance = balance - $1 WHERE id = $2', [monto, emisorId]);
+        await client.query('UPDATE usuarios SET balance = balance + $1 WHERE id = $2', [monto, receptorId]);
+        const res = await client.query('INSERT INTO transferencias (emisor, receptor, monto, fecha) VALUES ($1, $2, $3, NOW()) RETURNING *', [emisorId, receptorId, monto]);
+        await client.query('COMMIT');
+        return res.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
+async function getTransferencias() {
+    const res = await pool.query('SELECT * FROM transferencias');
+    return res.rows;
+}
+
+module.exports = {
+    addTransferencia,
+    getTransferencias
+};

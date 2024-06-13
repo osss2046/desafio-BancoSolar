@@ -152,7 +152,7 @@
     e.preventDefault();
     const emisor = document.getElementById('emisor').value;
     const receptor = document.getElementById('receptor').value;
-    const monto = parseFloat(document.getElementById('monto').value);
+    const monto = parseFloat(document.getElementById('amount').value);
 
     if (!monto || !emisor || !receptor) {
       alert("Debe seleccionar un emisor, receptor y monto a transferir");
@@ -170,7 +170,7 @@
       
       const newTransfer = await response.json();
       updateTransferenciasTable(newTransfer);
-      document.getElementById('monto').value = '';
+      document.getElementById('amount').value = '';
     } catch (error) {
       console.error(error);
       alert("Error: " + error.message);
@@ -179,37 +179,65 @@
 
   async function getUsuarios() {
     try {
-      const response = await fetch(`${apiUrl}/usuarios`);
-      if (!response.ok) throw new Error('Failed to fetch users');
-      const usuarios = await response.json();
-      if (Array.isArray(usuarios)) {
-        usuarios.forEach(usuario => {
-          updateUsuariosTable(usuario);
-        });
-      } else {
-        console.error('Se esperaba un array de usuarios, recibido:', usuarios);
-      }
-    } catch (error) {
-      console.error('Error al obtener usuarios:', error);
-    }
-  }
+        const response = await fetch(`${apiUrl}/usuarios`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch users');
+        }
+        const usuarios = await response.json();
+        const emisorSelect = document.getElementById('emisor');
+        const receptorSelect = document.getElementById('receptor');
 
-  async function getTransferencias() {
-    try {
-      const response = await fetch(`${apiUrl}/transferencias`);
-      if (!response.ok) throw new Error('Failed to fetch transfers');
-      const transferencias = await response.json();
-      if (Array.isArray(transferencias)) {
-        transferencias.forEach(t => {
-          updateTransferenciasTable(t);
-        });
-      } else {
-        console.error('Se esperaba un array de transferencias, recibido:', transferencias);
-      }
+        emisorSelect.innerHTML = ''; // Limpiar selectores
+        receptorSelect.innerHTML = '';
+
+        if (Array.isArray(usuarios)) {
+            usuarios.forEach(usuario => {
+                const optionEmisor = document.createElement('option');
+                optionEmisor.value = usuario.id;
+                optionEmisor.text = usuario.nombre;
+                emisorSelect.add(optionEmisor);
+
+                const optionReceptor = document.createElement('option');
+                optionReceptor.value = usuario.id;
+                optionReceptor.text = usuario.nombre;
+                receptorSelect.add(optionReceptor);
+
+                updateUsuariosTable(usuario); // Actualiza la tabla de usuarios
+            });
+        } else {
+            console.error('Se esperaba un array de usuarios, recibido:', usuarios);
+        }
     } catch (error) {
-      console.error('Error al obtener transferencias:', error);
+        console.error('Error al obtener usuarios:', error);
     }
-  }
+}
+
+  // Cargar transferencias
+  const getTransferencias = async () => {
+    try {
+        const response = await fetch(`${apiUrl}/transferencias`);
+        const transferencias = await response.json();
+        
+        // Asegurarse de que la respuesta es un array
+        if (Array.isArray(transferencias)) {
+            transferencias.forEach(t => {
+                // Suponiendo que cada transferencia tiene propiedades fecha, emisor, receptor y monto
+                $(".transferencias").append(`
+                    <tr>
+                        <td>${formatDate(t.fecha)}</td>
+                        <td>${t.emisor}</td>
+                        <td>${t.receptor}</td>
+                        <td>${t.monto}</td>
+                    </tr>
+                `);
+            });
+        } else {
+            console.error('Se esperaba un array de transferencias, recibido:', transferencias);
+        }
+    } catch (error) {
+        console.error('Error al obtener transferencias:', error);
+    }
+};
 
   // Actualizar la tabla de usuarios
   function updateUsuariosTable(usuario) {
@@ -244,47 +272,49 @@
     return moment(date).format("DD/MM/YYYY HH:mm");
   }
 
-  // Eliminar usuario
-  async function eliminarUsuario(id) {
-    try {
-      const response = await fetch(`${apiUrl}/usuarios/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error('Error al eliminar usuario');
-      location.reload();
-    } catch (error) {
-      console.error(error);
-      alert("Error: " + error.message);
-    }
-  }
-
-  // Establecer información en el modal para editar
+  // Establecer información en el modal para editar usuario
   function setInfoModal(id, nombre, balance) {
     document.getElementById('nombreEdit').value = nombre;
     document.getElementById('balanceEdit').value = balance;
-    document.getElementById('editButton').onclick = () => editUsuario(id);
+    document.getElementById('editButton').setAttribute('onclick', `editUsuario('${id}')`);
   }
 
   // Editar usuario
   async function editUsuario(id) {
     const nombre = document.getElementById('nombreEdit').value;
     const balance = parseFloat(document.getElementById('balanceEdit').value);
-    if (!nombre || isNaN(balance)) {
-      alert('Nombre y balance son requeridos y el balance debe ser un número.');
-      return;
-    }
 
     try {
       const response = await fetch(`${apiUrl}/usuarios/${id}`, {
-        method: "PUT",
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nombre, balance })
       });
+
       if (!response.ok) throw new Error('Error al editar usuario');
+      
+      document.getElementById('exampleModal').modal('hide');
       location.reload();
     } catch (error) {
-      console.error(error);
+      console.error('Error:', error);
       alert("Error: " + error.message);
     }
   }
+
+  // Eliminar usuario
+  async function eliminarUsuario(id) {
+    try {
+      const response = await fetch(`${apiUrl}/usuarios/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Error al eliminar usuario');
+      
+      location.reload();
+    } catch (error) {
+      console.error('Error:', error);
+      alert("Error: " + error.message);
+    }
+  }
+
 </script>
