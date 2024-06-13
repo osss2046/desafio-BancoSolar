@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Banco Solar C.A</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" crossorigin="anonymous" />
+</head>
+<body class="p-5">
+    <h1 class="text-center" style="font-size: 60px">&#127979;</h1>
+    <h2 class="text-center pb-0 mb-0">Banco Solar C.A</h2>
+    <hr class="w-25 pb-1" />
+    <div class="row m-auto px-5">
+        <div class="col-12 col-sm-5">
+            <form id="addUserForm">
+                <div class="form-group text-center">
+                    <h5>Agregar Nuevo Usuario</h5>
+                    <hr class="bg-white w-50" />
+                    <div class="d-flex align-items-center justify-content-center">
+                        Nombre:
+                        <input class="form-control d-inline mx-3" id="userName" required />
+                        Balance:
+                        <input type="number" class="form-control d-inline mx-3" id="userBalance" required />
+                        <button type="submit" class="btn btn-danger">Agregar</button>
+                    </div>
+                </div>
+            </form>
+            <br />
+        </div>
+        <div class="col-12 col-sm-7">
+            <form id="transferForm">
+                <div class="form-group text-center">
+                    <h5>Realizar una Transferencia</h5>
+                    <hr class="bg-white w-50" />
+                    <div class="d-flex align-items-center justify-content-center flex-wrap">
+                        Emisor:
+                        <select id="emisor" class="form-control mx-2 w-auto d-inline"></select>
+                        Receptor:
+                        <select id="receptor" class="form-control mx-2 w-auto d-inline"></select>
+                        Monto:
+                        <input type="number" class="form-control mx-2 w-auto d-inline" id="amount" />
+                        <button type="submit" class="btn btn-danger">Realizar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="col-12 row mt-3 mx-0 px-0">
+            <div class="col-12 col-sm-5 text-center">
+                <h5>Tabla de usuarios</h5>
+                <table class="table bg-light">
+                    <thead class="bg-danger text-white">
+                        <th>Nombre</th>
+                        <th>Balance</th>
+                        <th></th>
+                    </thead>
+                    <tbody class="usuarios"></tbody>
+                </table>
+            </div>
+            <div class="col-12 col-sm-7 text-center">
+                <h5>Tabla de Transferencias</h5>
+                <table class="table bg-light">
+                    <thead class="bg-danger text-white">
+                        <th>Fecha</th>
+                        <th>Emisor</th>
+                        <th>Receptor</th>
+                        <th>Monto</th>
+                    </thead>
+                    <tbody class="transferencias"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    <script src="https://momentjs.com/downloads/moment.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog text-dark" role="document">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-2">Nombre</div>
+                        <div class="col-10">
+                            <input id="nombreEdit" type="text" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-2">Balance</div>
+                        <div class="col-10">
+                            <input id="balanceEdit" type="text" class="form-control" />
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" id="editButton">Editar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+<style>
+  body {
+    background: #e5e1dd;
+  }
+  form {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+  }
+</style>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    getUsuarios();
+    getTransferencias();
+  });
+
+  const apiUrl = 'http://localhost:3000';
+
+  // Agregar usuario
+  document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const nombre = document.getElementById('userName').value;
+    const balance = parseFloat(document.getElementById('userBalance').value);
+    if (!nombre || isNaN(balance)) {
+      alert('Nombre y balance son requeridos y el balance debe ser un número.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/usuarios`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, balance })
+      });
+
+      if (!response.ok) throw new Error('Error al agregar usuario');
+      
+      const newUser = await response.json();
+      updateUsuariosTable(newUser);
+      document.getElementById('userName').value = '';
+      document.getElementById('userBalance').value = '';
+    } catch (error) {
+      console.error(error);
+      alert("Error: " + error.message);
+    }
+  });
+
+  // Realizar una transferencia
+  document.getElementById('transferForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const emisor = document.getElementById('emisor').value;
+    const receptor = document.getElementById('receptor').value;
+    const monto = parseFloat(document.getElementById('monto').value);
+
+    if (!monto || !emisor || !receptor) {
+      alert("Debe seleccionar un emisor, receptor y monto a transferir");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/transferencias`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emisor, receptor, monto })
+      });
+
+      if (!response.ok) throw new Error('Error al realizar transferencia');
+      
+      const newTransfer = await response.json();
+      updateTransferenciasTable(newTransfer);
+      document.getElementById('monto').value = '';
+    } catch (error) {
+      console.error(error);
+      alert("Error: " + error.message);
+    }
+  });
+
+  async function getUsuarios() {
+    try {
+      const response = await fetch(`${apiUrl}/usuarios`);
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const usuarios = await response.json();
+      if (Array.isArray(usuarios)) {
+        usuarios.forEach(usuario => {
+          updateUsuariosTable(usuario);
+        });
+      } else {
+        console.error('Se esperaba un array de usuarios, recibido:', usuarios);
+      }
+    } catch (error) {
+      console.error('Error al obtener usuarios:', error);
+    }
+  }
+
+  async function getTransferencias() {
+    try {
+      const response = await fetch(`${apiUrl}/transferencias`);
+      if (!response.ok) throw new Error('Failed to fetch transfers');
+      const transferencias = await response.json();
+      if (Array.isArray(transferencias)) {
+        transferencias.forEach(t => {
+          updateTransferenciasTable(t);
+        });
+      } else {
+        console.error('Se esperaba un array de transferencias, recibido:', transferencias);
+      }
+    } catch (error) {
+      console.error('Error al obtener transferencias:', error);
+    }
+  }
+
+  // Actualizar la tabla de usuarios
+  function updateUsuariosTable(usuario) {
+    const usuariosTable = document.querySelector('.usuarios');
+    usuariosTable.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${usuario.nombre}</td>
+        <td>${usuario.balance.toFixed(2)}</td>
+        <td>
+          <button class="btn btn-warning" data-toggle="modal" data-target="#exampleModal" onclick="setInfoModal('${usuario.id}', '${usuario.nombre}', '${usuario.balance}')">Editar</button>
+          <button class="btn btn-danger" onclick="eliminarUsuario('${usuario.id}')">Eliminar</button>
+        </td>
+      </tr>
+    `);
+  }
+
+  // Actualizar la tabla de transferencias
+  function updateTransferenciasTable(transferencia) {
+    const transferenciasTable = document.querySelector('.transferencias');
+    transferenciasTable.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${formatDate(transferencia.fecha)}</td>
+        <td>${transferencia.emisor}</td>
+        <td>${transferencia.receptor}</td>
+        <td>${transferencia.monto.toFixed(2)}</td>
+      </tr>
+    `);
+  }
+
+  // Formatear fecha
+  function formatDate(date) {
+    return moment(date).format("DD/MM/YYYY HH:mm");
+  }
+
+  // Eliminar usuario
+  async function eliminarUsuario(id) {
+    try {
+      const response = await fetch(`${apiUrl}/usuarios/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error('Error al eliminar usuario');
+      location.reload();
+    } catch (error) {
+      console.error(error);
+      alert("Error: " + error.message);
+    }
+  }
+
+  // Establecer información en el modal para editar
+  function setInfoModal(id, nombre, balance) {
+    document.getElementById('nombreEdit').value = nombre;
+    document.getElementById('balanceEdit').value = balance;
+    document.getElementById('editButton').onclick = () => editUsuario(id);
+  }
+
+  // Editar usuario
+  async function editUsuario(id) {
+    const nombre = document.getElementById('nombreEdit').value;
+    const balance = parseFloat(document.getElementById('balanceEdit').value);
+    if (!nombre || isNaN(balance)) {
+      alert('Nombre y balance son requeridos y el balance debe ser un número.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/usuarios/${id}`, {
+        method: "PUT",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, balance })
+      });
+      if (!response.ok) throw new Error('Error al editar usuario');
+      location.reload();
+    } catch (error) {
+      console.error(error);
+      alert("Error: " + error.message);
+    }
+  }
+</script>
