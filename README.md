@@ -28,8 +28,8 @@ CREATE TABLE transferencias
 ## Funcionalidad del Proyecto
 
 Este proyecto esta pensando como una Banco en el cual se pueden registrar usuarios, los cuales se registran por el cliente introduciendo un nombre y un monto inicial.
-Se pueden incluir la cantidad de clientes que sean necesarios.
-Luego se pueden realizar transferencias entre los clientes, por ejemplo si usuario Oscar tiene inicialmente $200 y usuario Luis tiene inicialmente $0, el primer usuario 
+Se pueden incluir la cantidad de usuarios que sean necesarios.
+Luego se pueden realizar transferencias entre los usuarios, por ejemplo si usuario 'Oscar' tiene inicialmente $200 y usuario 'Luis' tiene inicialmente $0, el primer usuario 
 puede transferir una cantidad de $100 al otro usuario, quedando ambos con $100. Estos cambios se ven reflejados en la base de datos.
 
 ## Posibles mejoras
